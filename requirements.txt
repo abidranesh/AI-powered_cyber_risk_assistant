@@ -1,0 +1,31 @@
+# ── Core data pipeline (unchanged) ──────────────────────────────────────
+pandas>=2.0
+requests>=2.31
+tabulate>=0.9
+
+# ── FastAPI backend (unchanged) ──────────────────────────────────────────
+fastapi>=0.110
+uvicorn[standard]>=0.29
+python-dotenv>=1.0
+
+# ── LangChain: core ───────────────────────────────────────────────────────
+# langchain-core     — PromptTemplate, StrOutputParser (LCEL)
+# langchain          — base abstractions
+# langchain-community — DataFrameLoader, Chroma vectorstore wrapper
+# langchain-text-splitters — RecursiveCharacterTextSplitter
+langchain-core>=0.2
+langchain>=0.2
+langchain-community>=0.2
+langchain-text-splitters>=0.2
+
+# ── LLM: Groq (fast inference, high free quota) ───────────────────────────
+# Provides: ChatGroq — replaces ChatGoogleGenerativeAI for LLM summaries
+langchain-groq>=0.1
+
+# ── Local embeddings (no API key, no quota) ───────────────────────────────
+# FastEmbedEmbeddings (langchain-community) wraps fastembed; ~50MB model downloads on first use
+fastembed>=0.3
+
+# ── Vector store (langchain-chroma is the current wrapper; langchain-community's Chroma is deprecated) ──
+langchain-chroma>=0.1
+chromadb>=0.5

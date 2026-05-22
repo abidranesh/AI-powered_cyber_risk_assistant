@@ -1,0 +1,1203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>TawasolPay — Cyber Risk Intelligence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #07080d;
+    --surface: #0e1018;
+    --surface2: #141720;
+    --border: rgba(255,255,255,0.06);
+    --border-bright: rgba(255,255,255,0.12);
+    --text: #e8eaf0;
+    --muted: #6b7280;
+    --accent: #ff4d3d;
+    --accent2: #ff8c42;
+    --accent3: #ffd166;
+    --green: #06d6a0;
+    --blue: #4facfe;
+    --purple: #a78bfa;
+    --red: #ff4d3d;
+
+    --score-critical: #ff4d3d;
+    --score-high: #ff8c42;
+    --score-medium: #ffd166;
+    --score-low: #06d6a0;
+
+    --font-display: 'Syne', sans-serif;
+    --font-body: 'DM Sans', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 14px;
+    line-height: 1.6;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── Grid noise background ── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(255,77,61,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,77,61,0.03) 1px, transparent 1px);
+    background-size: 48px 48px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── Ambient glow ── */
+  body::after {
+    content: '';
+    position: fixed;
+    top: -30%;
+    left: -20%;
+    width: 800px;
+    height: 800px;
+    background: radial-gradient(circle, rgba(255,77,61,0.06) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── Header ── */
+  header {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 40px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(7,8,13,0.9);
+    backdrop-filter: blur(12px);
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .logo-mark {
+    width: 32px;
+    height: 32px;
+    background: var(--accent);
+    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+    animation: pulse-logo 3s ease-in-out infinite;
+  }
+
+  @keyframes pulse-logo {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+  }
+
+  .logo-text {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 18px;
+    letter-spacing: -0.5px;
+  }
+
+  .logo-text span { color: var(--accent); }
+
+  .header-meta {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  .status-dot {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--green);
+    animation: blink 2s ease-in-out infinite;
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  /* ── Main layout ── */
+  main {
+    position: relative;
+    z-index: 1;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 40px;
+  }
+
+  /* ── Page title ── */
+  .page-title {
+    margin-bottom: 40px;
+  }
+
+  .page-title h1 {
+    font-family: var(--font-display);
+    font-size: clamp(28px, 4vw, 48px);
+    font-weight: 800;
+    letter-spacing: -1.5px;
+    line-height: 1.1;
+    background: linear-gradient(135deg, var(--text) 30%, var(--muted) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .page-title h1 em {
+    font-style: normal;
+    -webkit-text-fill-color: var(--accent);
+  }
+
+  .page-title p {
+    margin-top: 10px;
+    color: var(--muted);
+    font-size: 13px;
+    font-family: var(--font-mono);
+  }
+
+  /* ── Summary bar ── */
+  .summary-bar {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 40px;
+  }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 24px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+
+  .stat-card:hover { border-color: var(--border-bright); }
+
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--card-accent, var(--accent));
+  }
+
+  .stat-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+
+  .stat-value {
+    font-family: var(--font-display);
+    font-size: 36px;
+    font-weight: 800;
+    letter-spacing: -1px;
+    color: var(--card-accent, var(--text));
+  }
+
+  .stat-sub {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+
+  /* ── Controls bar ── */
+  .controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+  }
+
+  .controls-label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.5px;
+  }
+
+  .filter-btn {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    padding: 6px 14px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 0.5px;
+  }
+
+  .filter-btn:hover {
+    border-color: var(--border-bright);
+    color: var(--text);
+  }
+
+  .filter-btn.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+
+  .spacer { flex: 1; }
+
+  .run-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--font-display);
+    font-size: 13px;
+    font-weight: 600;
+    padding: 9px 20px;
+    border-radius: 8px;
+    border: none;
+    background: var(--accent);
+    color: #fff;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.2px;
+  }
+
+  .run-btn:hover {
+    background: #ff3020;
+    transform: translateY(-1px);
+    box-shadow: 0 8px 24px rgba(255,77,61,0.3);
+  }
+
+  .run-btn:active { transform: translateY(0); }
+
+  .run-btn svg { width: 14px; height: 14px; }
+
+  /* ── Risk cards ── */
+  .risks-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .risk-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.16,1,0.3,1);
+    cursor: pointer;
+    animation: card-in 0.5s cubic-bezier(0.16,1,0.3,1) both;
+  }
+
+  @keyframes card-in {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .risk-card:hover {
+    border-color: var(--border-bright);
+    transform: translateY(-2px);
+    box-shadow: 0 16px 48px rgba(0,0,0,0.4);
+  }
+
+  .risk-card.expanded {
+    border-color: var(--card-color, var(--accent));
+    box-shadow: 0 0 0 1px var(--card-color, var(--accent)), 0 16px 48px rgba(0,0,0,0.4);
+  }
+
+  /* Card header */
+  .card-header {
+    display: grid;
+    grid-template-columns: 56px 1fr auto;
+    align-items: center;
+    gap: 20px;
+    padding: 20px 24px;
+  }
+
+  .rank-badge {
+    width: 48px;
+    height: 48px;
+    border-radius: 10px;
+    background: var(--card-color, var(--accent));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-display);
+    font-size: 22px;
+    font-weight: 800;
+    color: #fff;
+    flex-shrink: 0;
+    position: relative;
+  }
+
+  .rank-badge::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.1);
+  }
+
+  .card-main { min-width: 0; }
+
+  .card-title {
+    font-family: var(--font-display);
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .card-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 4px;
+    flex-wrap: wrap;
+  }
+
+  .tag {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    letter-spacing: 0.3px;
+  }
+
+  .tag-cve { background: rgba(79,172,254,0.12); color: var(--blue); border: 1px solid rgba(79,172,254,0.2); }
+  .tag-ransomware { background: rgba(255,77,61,0.12); color: var(--red); border: 1px solid rgba(255,77,61,0.2); }
+  .tag-kev { background: rgba(255,209,102,0.12); color: var(--accent3); border: 1px solid rgba(255,209,102,0.2); }
+  .tag-actor { background: rgba(167,139,250,0.12); color: var(--purple); border: 1px solid rgba(167,139,250,0.2); }
+  .tag-exposed { background: rgba(255,140,66,0.12); color: var(--accent2); border: 1px solid rgba(255,140,66,0.2); }
+  .tag-pci { background: rgba(6,214,160,0.12); color: var(--green); border: 1px solid rgba(6,214,160,0.2); }
+
+  .card-scores {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  .score-ring-wrap { position: relative; }
+
+  .score-ring-wrap svg { display: block; }
+
+  .score-center {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+  }
+
+  .score-number {
+    font-family: var(--font-display);
+    font-size: 18px;
+    font-weight: 800;
+    line-height: 1;
+  }
+
+  .score-label {
+    font-family: var(--font-mono);
+    font-size: 8px;
+    color: var(--muted);
+    letter-spacing: 0.5px;
+  }
+
+  .cvss-bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--muted);
+  }
+
+  .cvss-pip {
+    width: 40px;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .cvss-fill {
+    height: 100%;
+    background: var(--card-color, var(--accent));
+    border-radius: 2px;
+    transition: width 0.6s cubic-bezier(0.16,1,0.3,1);
+  }
+
+  .chevron {
+    color: var(--muted);
+    transition: transform 0.3s;
+    flex-shrink: 0;
+  }
+
+  .risk-card.expanded .chevron { transform: rotate(180deg); }
+
+  /* Card body (expanded) */
+  .card-body {
+    display: none;
+    border-top: 1px solid var(--border);
+    animation: body-in 0.25s ease both;
+  }
+
+  @keyframes body-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  .risk-card.expanded .card-body { display: block; }
+
+  .card-body-inner {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 0;
+  }
+
+  .body-section {
+    padding: 24px;
+    border-right: 1px solid var(--border);
+  }
+
+  .body-section:last-child { border-right: none; }
+
+  .body-section h4 {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 14px;
+  }
+
+  .info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border);
+    gap: 12px;
+  }
+
+  .info-row:last-child { border-bottom: none; }
+
+  .info-key {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--muted);
+    flex-shrink: 0;
+  }
+
+  .info-val {
+    font-size: 12px;
+    text-align: right;
+    word-break: break-all;
+  }
+
+  .info-val.highlight { color: var(--card-color, var(--accent)); font-weight: 500; }
+
+  .analysis-text {
+    font-size: 13px;
+    line-height: 1.7;
+    color: #c4c8d4;
+  }
+
+  .nist-block {
+    margin-top: 12px;
+    padding: 12px 14px;
+    background: var(--surface2);
+    border-radius: 8px;
+    border-left: 3px solid var(--card-color, var(--accent));
+  }
+
+  .nist-id {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--card-color, var(--accent));
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+  }
+
+  .nist-text {
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  .rationale-text {
+    font-size: 13px;
+    line-height: 1.7;
+    color: #c4c8d4;
+    margin-bottom: 16px;
+  }
+
+  .reason-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .reason-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .reason-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--card-color, var(--accent));
+    flex-shrink: 0;
+    margin-top: 6px;
+  }
+
+  /* ── Loading overlay ── */
+  .loading-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(7,8,13,0.85);
+    backdrop-filter: blur(8px);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .loading-overlay.active { display: flex; }
+
+  .loader-ring {
+    width: 48px;
+    height: 48px;
+    border: 2px solid var(--border-bright);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .loading-text {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  /* ── Empty state ── */
+  .empty-state {
+    text-align: center;
+    padding: 80px 40px;
+    color: var(--muted);
+  }
+
+  .empty-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+    opacity: 0.3;
+  }
+
+  .empty-state h3 {
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 8px;
+    opacity: 0.5;
+  }
+
+  .empty-state p {
+    font-size: 13px;
+    max-width: 300px;
+    margin: 0 auto;
+  }
+
+  /* ── Error banner ── */
+  .error-banner {
+    display: none;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 20px;
+    background: rgba(255,77,61,0.1);
+    border: 1px solid rgba(255,77,61,0.25);
+    border-radius: 10px;
+    margin-bottom: 20px;
+    font-size: 13px;
+    color: var(--accent);
+  }
+
+  .error-banner.active { display: flex; }
+
+  /* ── Timeline bar ── */
+  .timeline {
+    margin-bottom: 40px;
+  }
+
+  .timeline h3 {
+    font-family: var(--font-display);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+    margin-bottom: 14px;
+    letter-spacing: 0.3px;
+  }
+
+  .timeline-track {
+    display: flex;
+    height: 8px;
+    border-radius: 4px;
+    overflow: hidden;
+    background: var(--surface2);
+    gap: 2px;
+  }
+
+  .timeline-seg {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.8s cubic-bezier(0.16,1,0.3,1);
+    position: relative;
+  }
+
+  .timeline-labels {
+    display: flex;
+    margin-top: 8px;
+    gap: 2px;
+  }
+
+  .timeline-label {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: var(--muted);
+    text-align: center;
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 900px) {
+    main { padding: 20px; }
+    header { padding: 16px 20px; }
+    .summary-bar { grid-template-columns: 1fr 1fr; }
+    .card-body-inner { grid-template-columns: 1fr; }
+    .body-section { border-right: none; border-bottom: 1px solid var(--border); }
+    .card-header { grid-template-columns: 44px 1fr; }
+    .card-scores { display: none; }
+  }
+
+  @media (max-width: 600px) {
+    .summary-bar { grid-template-columns: 1fr; }
+    .card-title { font-size: 14px; }
+  }
+
+  /* ── Tooltip ── */
+  [data-tip] {
+    position: relative;
+    cursor: help;
+  }
+
+  [data-tip]::after {
+    content: attr(data-tip);
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1e2028;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    white-space: nowrap;
+    border: 1px solid var(--border-bright);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s;
+    z-index: 20;
+  }
+
+  [data-tip]:hover::after { opacity: 1; }
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
+</head>
+<body>
+
+<!-- Loading overlay -->
+<div class="loading-overlay" id="loading">
+  <div class="loader-ring"></div>
+  <div class="loading-text" id="loading-text">Running risk engine...</div>
+</div>
+
+<!-- Header -->
+<header>
+  <div class="logo">
+    <div class="logo-mark"></div>
+    <div class="logo-text"><span>Tawasol</span>Pay</div>
+  </div>
+  <div class="header-meta">
+    <span class="status-dot">
+      <span class="dot"></span>
+      <span id="status-text">Awaiting scan</span>
+    </span>
+    <span id="last-run">—</span>
+    <span>MDR Advisory · April 2026</span>
+  </div>
+</header>
+
+<main>
+  <!-- Page title -->
+  <div class="page-title">
+    <h1>Cyber Risk<br/><em>Intelligence</em></h1>
+    <p>// AI-powered vulnerability prioritisation · TawasolPay Security Operations</p>
+  </div>
+
+  <!-- Summary stats -->
+  <div class="summary-bar">
+    <div class="stat-card" style="--card-accent: var(--accent)">
+      <div class="stat-label">Risk score peak</div>
+      <div class="stat-value" id="stat-peak">—</div>
+      <div class="stat-sub">out of 100</div>
+    </div>
+    <div class="stat-card" style="--card-accent: var(--accent2)">
+      <div class="stat-label">Threat actors matched</div>
+      <div class="stat-value" id="stat-actors">—</div>
+      <div class="stat-sub">active campaigns</div>
+    </div>
+    <div class="stat-card" style="--card-accent: var(--accent3)">
+      <div class="stat-label">Internet-exposed</div>
+      <div class="stat-value" id="stat-exposed">—</div>
+      <div class="stat-sub">of top 5 risks</div>
+    </div>
+    <div class="stat-card" style="--card-accent: var(--green)">
+      <div class="stat-label">NIST controls mapped</div>
+      <div class="stat-value" id="stat-nist">—</div>
+      <div class="stat-sub">remediation pathways</div>
+    </div>
+  </div>
+
+  <!-- Error banner -->
+  <div class="error-banner" id="error-banner">
+    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+    <span id="error-text">Could not connect to backend.</span>
+  </div>
+
+  <!-- Controls -->
+  <div class="controls">
+    <span class="controls-label">FILTER:</span>
+    <button class="filter-btn active" data-filter="all" onclick="applyFilter('all',this)">All risks</button>
+    <button class="filter-btn" data-filter="ransomware" onclick="applyFilter('ransomware',this)">Ransomware</button>
+    <button class="filter-btn" data-filter="internet" onclick="applyFilter('internet',this)">Internet-exposed</button>
+    <button class="filter-btn" data-filter="actor" onclick="applyFilter('actor',this)">Threat actor matched</button>
+    <div class="spacer"></div>
+    <button class="run-btn" onclick="loadRisks()">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+      Run analysis
+    </button>
+  </div>
+
+  <!-- Risk list -->
+  <div class="risks-grid" id="risks-container">
+    <div class="empty-state">
+      <div class="empty-icon">🛡</div>
+      <h3>No analysis yet</h3>
+      <p>Click "Run analysis" to fetch the latest risk scores from the backend engine.</p>
+    </div>
+  </div>
+</main>
+
+<script>
+// ──────────────────────────────────────────────────────────
+// CONFIG — localhost hits port 8000 directly; any other host uses same origin
+// ─────────────────────────────────────────────────────────────────────────
+const API_URL = window.location.hostname === 'localhost'
+  ? 'http://localhost:8000/api/risks'
+  : window.location.origin + '/api/risks';
+
+// Color scheme per rank
+const RANK_COLORS = ["#ff4d3d","#ff8c42","#ffd166","#4facfe","#a78bfa"];
+const RANK_LABELS = ["CRITICAL","HIGH","HIGH","MEDIUM","MEDIUM"];
+
+let allRisks = [];
+let currentFilter = "all";
+
+// ── Main fetch ──────────────────────────────────────────────
+async function loadRisks() {
+  showLoading("Running risk engine...");
+  hideError();
+
+  try {
+    const resp = await fetch(API_URL, { method: "GET" });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
+    const data = await resp.json();
+
+    // Expect { risks: [...] }
+    allRisks = data.risks || data;
+    renderAll(allRisks);
+    updateStats(allRisks);
+    updateStatus("Scan complete");
+    document.getElementById("last-run").textContent = new Date().toLocaleTimeString();
+
+  } catch(err) {
+    showError(`Backend error: ${err.message}. Make sure your Flask/FastAPI server is running on ${API_URL}`);
+    updateStatus("Error — backend offline");
+    // Show mock data so the UI is demonstrable
+    renderMockData();
+  } finally {
+    hideLoading();
+  }
+}
+
+// ── Render all risk cards ────────────────────────────────────
+function renderAll(risks) {
+  const container = document.getElementById("risks-container");
+  if (!risks || risks.length === 0) {
+    container.innerHTML = `<div class="empty-state">
+      <div class="empty-icon">✓</div>
+      <h3>No risks returned</h3>
+      <p>The engine returned zero results. Check your data files.</p>
+    </div>`;
+    return;
+  }
+
+  const filtered = filterRisks(risks, currentFilter);
+  container.innerHTML = filtered.map((r, i) => buildCard(r, i)).join("");
+}
+
+function filterRisks(risks, f) {
+  if (f === "all") return risks;
+  if (f === "ransomware") return risks.filter(r => String(r.ransomware_association||"").toLowerCase() === "yes");
+  if (f === "internet")   return risks.filter(r =>
+    ["internet","yes"].includes(String(r.asset_exposure||r.internet_exposed||"").toLowerCase()));
+  if (f === "actor")      return risks.filter(r => r.threat_actor && r.threat_actor !== "None identified");
+  return risks;
+}
+
+function applyFilter(f, btn) {
+  currentFilter = f;
+  document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  renderAll(allRisks);
+}
+
+// ── Build one card ────────────────────────────────────────────
+function buildCard(r, i) {
+  const color = RANK_COLORS[i] || "#6b7280";
+  const rank  = i + 1;
+  const score = Math.round(r.risk_score || 0);
+  const cvss  = parseFloat(r.cvss) || 0;
+  const circumference = 2 * Math.PI * 22; // r=22 ring
+  const dashOffset = circumference * (1 - score / 100);
+
+  const exposed = ["internet","yes"].includes(String(r.asset_exposure||r.internet_exposed||"").toLowerCase());
+  const hasActor = r.threat_actor && r.threat_actor !== "None identified";
+  const isRansomware = String(r.ransomware_association||"").toLowerCase() === "yes";
+  const inKev = r.in_kev;
+  const compliance = r.compliance_scope || "";
+  const hasPCI = compliance.toLowerCase().includes("pci");
+  const hasGDPR = compliance.toLowerCase().includes("gdpr");
+
+  const tags = [
+    r.cve ? `<span class="tag tag-cve" data-tip="Common Vulnerabilities and Exposures ID">${r.cve}</span>` : "",
+    isRansomware ? `<span class="tag tag-ransomware">Ransomware</span>` : "",
+    inKev ? `<span class="tag tag-kev" data-tip="CISA Known Exploited Vulnerability">CISA KEV</span>` : "",
+    hasActor ? `<span class="tag tag-actor">${r.threat_actor}</span>` : "",
+    exposed ? `<span class="tag tag-exposed">Internet-exposed</span>` : "",
+    hasPCI ? `<span class="tag tag-pci">PCI DSS</span>` : "",
+    hasGDPR ? `<span class="tag tag-pci">GDPR</span>` : "",
+  ].filter(Boolean).join("");
+
+  const reasons = buildReasons(r, exposed, hasActor, isRansomware, inKev);
+  const nistHtml = r.nist_control ? `
+    <div class="nist-block">
+      <div class="nist-id">${r.nist_control.control_id} — ${r.nist_control.control_name}</div>
+      <div class="nist-text">${escHtml(r.nist_control.text || "")}</div>
+    </div>` : `<div class="nist-text" style="color:var(--muted);font-size:12px">No NIST control retrieved.</div>`;
+
+  const analysis = r.llm_analysis || r.analysis || "Run the engine with the LLM enabled to see AI-generated analysis here.";
+
+  return `
+<div class="risk-card" id="card-${i}" style="--card-color:${color}" onclick="toggleCard(${i})">
+  <div class="card-header">
+    <div class="rank-badge">${rank}</div>
+    <div class="card-main">
+      <div class="card-title">${escHtml(r.asset_name || r.asset_id || "Unknown asset")} — ${escHtml(r.vulnerability_name || "Unknown vulnerability")}</div>
+      <div class="card-meta">${tags}</div>
+    </div>
+    <div class="card-scores">
+      <div class="score-ring-wrap">
+        <svg width="56" height="56" viewBox="0 0 56 56">
+          <circle cx="28" cy="28" r="22" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="3"/>
+          <circle cx="28" cy="28" r="22" fill="none" stroke="${color}" stroke-width="3"
+            stroke-dasharray="${circumference.toFixed(1)}"
+            stroke-dashoffset="${dashOffset.toFixed(1)}"
+            stroke-linecap="round"
+            transform="rotate(-90 28 28)"/>
+        </svg>
+        <div class="score-center">
+          <div class="score-number" style="color:${color}">${score}</div>
+          <div class="score-label">RISK</div>
+        </div>
+      </div>
+      <div class="cvss-bar">
+        <span>CVSS</span>
+        <div class="cvss-pip"><div class="cvss-fill" style="width:${cvss*10}%"></div></div>
+        <span>${cvss}</span>
+      </div>
+    </div>
+    <svg class="chevron" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+  </div>
+
+  <div class="card-body">
+    <div class="card-body-inner">
+
+      <!-- Col 1: Asset + vuln details -->
+      <div class="body-section">
+        <h4>Asset &amp; Vulnerability</h4>
+        ${infoRow("Asset", r.asset_name || r.asset_id)}
+        ${infoRow("CVE", r.cve, true)}
+        ${infoRow("CVSS score", cvss + " / 10")}
+        ${infoRow("Severity", r.severity || "—")}
+        ${infoRow("Component", r.affected_component || "—")}
+        ${infoRow("Days open", r.days_open || "—")}
+        ${infoRow("Patch available", r.patch_available || "—")}
+        ${infoRow("Exploit available", r.exploit_available || "—")}
+        ${infoRow("EDR installed", r.edr_installed || "—")}
+        ${infoRow("Environment", r.environment || "—")}
+        ${infoRow("Location", r.location || "—")}
+        ${infoRow("Business service", r.business_service || "—")}
+        ${infoRow("Compliance scope", compliance || "—")}
+      </div>
+
+      <!-- Col 2: Threat intel + NIST -->
+      <div class="body-section">
+        <h4>Threat Intelligence</h4>
+        ${infoRow("Threat actor", r.threat_actor || "None matched")}
+        ${infoRow("Campaign", r.campaign_name || "—")}
+        ${infoRow("Ransomware", r.ransomware_association || "No")}
+        ${infoRow("Exploit maturity", r.exploit_maturity || "—")}
+        ${infoRow("Last seen", r.active_last_seen || "—")}
+        ${infoRow("CISA KEV", r.in_kev ? "Yes" : "No")}
+
+        <h4 style="margin-top:20px">NIST Remediation</h4>
+        ${nistHtml}
+      </div>
+
+      <!-- Col 3: AI analysis + rationale -->
+      <div class="body-section">
+        <h4>Risk rationale</h4>
+        <p class="rationale-text">This risk ranked #${rank} because:</p>
+        <div class="reason-list">
+          ${reasons.map(r2 => `<div class="reason-item"><div class="reason-dot"></div><span>${r2}</span></div>`).join("")}
+        </div>
+
+        <h4 style="margin-top:20px">AI analysis</h4>
+        <div class="analysis-text">${marked.parse(analysis)}</div>
+      </div>
+
+    </div>
+  </div>
+</div>`;
+}
+
+function infoRow(key, val, highlight) {
+  return `<div class="info-row">
+    <span class="info-key">${key}</span>
+    <span class="info-val ${highlight ? "highlight" : ""}">${escHtml(String(val ?? "—"))}</span>
+  </div>`;
+}
+
+function buildReasons(r, exposed, hasActor, isRansomware, inKev) {
+  const reasons = [];
+  if (exposed) reasons.push("Asset is internet-facing — first-stage target in every active campaign");
+  if (hasActor) reasons.push(`Active campaign by ${r.threat_actor}${r.campaign_name ? " ("+r.campaign_name+")" : ""} confirmed in this region`);
+  if (isRansomware) reasons.push("Threat actor deploys ransomware — maximum operational disruption risk");
+  if (inKev) reasons.push("CVE is in CISA Known Exploited Vulnerabilities catalog — weaponised in the wild");
+  if (String(r.exploit_available||"").toLowerCase()==="yes") reasons.push("Public exploit available — low barrier for opportunistic attackers");
+  if (String(r.patch_available||"").toLowerCase()==="no") reasons.push("No patch available — no vendor fix exists yet");
+  const comp = String(r.compliance_scope||"").toLowerCase();
+  if (comp.includes("pci")) reasons.push("Asset is in PCI DSS scope — breach triggers mandatory notification");
+  if (comp.includes("gdpr")) reasons.push("Asset processes GDPR-covered PII — data breach carries regulatory fines");
+  if (String(r.edr_installed||"").toLowerCase()!=="yes") reasons.push("No EDR installed — no endpoint detection or containment capability");
+  if (String(r.criticality||"").toLowerCase()==="critical") reasons.push("Asset criticality is Critical — business-critical system");
+  if (reasons.length === 0) reasons.push("High CVSS score on a critical business asset");
+  return reasons;
+}
+
+// ── Toggle expand/collapse ───────────────────────────────────
+function toggleCard(i) {
+  const card = document.getElementById(`card-${i}`);
+  card.classList.toggle("expanded");
+}
+
+// ── Stats bar ────────────────────────────────────────────────
+function updateStats(risks) {
+  const peak = Math.max(...risks.map(r => r.risk_score || 0));
+  const actors = risks.filter(r => r.threat_actor && r.threat_actor !== "None identified").length;
+  const exposed = risks.filter(r => ["internet","yes"].includes(String(r.asset_exposure||r.internet_exposed||"").toLowerCase())).length;
+  const nist = risks.filter(r => r.nist_control && r.nist_control.control_id).length;
+
+  document.getElementById("stat-peak").textContent = Math.round(peak);
+  document.getElementById("stat-actors").textContent = actors;
+  document.getElementById("stat-exposed").textContent = exposed;
+  document.getElementById("stat-nist").textContent = nist;
+}
+
+// ── Mock data (so UI is demonstrable without backend) ────────
+function renderMockData() {
+  const mock = [
+    {
+      asset_name: "vpn-gateway-prod-01", asset_id: "A-1015",
+      vulnerability_name: "Fortinet SSL-VPN Heap Overflow",
+      cve: "CVE-2024-21762", severity: "Critical", cvss: 9.8,
+      risk_score: 97, exploit_available: "Yes", patch_available: "Yes",
+      days_open: 12, asset_exposure: "Internet", edr_installed: "No",
+      environment: "Production", location: "UAE",
+      business_service: "Payment Processing", compliance_scope: "PCI DSS",
+      threat_actor: "CrimsonJackal", campaign_name: "Gateway Breaker",
+      ransomware_association: "Yes", exploit_maturity: "Weaponized",
+      active_last_seen: "2026-04-22", in_kev: true,
+      nist_control: { control_id: "SI-2", control_name: "Flaw Remediation",
+        text: "The organization identifies, reports, and corrects information system flaws; tests software and firmware updates related to flaw remediation for effectiveness and potential side effects before installation; installs security-relevant software updates within an organizationally defined time period." },
+      llm_analysis: "This Fortinet SSL-VPN vulnerability is being actively weaponised by CrimsonJackal against UAE financial institutions right now — a confirmed victim in Dubai this week. NIST SI-2 requires emergency patch deployment within defined SLAs; given CISA KEV status, that window is measured in hours, not days. The immediate action is to isolate the VPN management plane from the internet and apply the vendor firmware patch before end of business today."
+    },
+    {
+      asset_name: "payment-api-prod-01", asset_id: "A-1003",
+      vulnerability_name: "Citrix NetScaler Session Token Leak",
+      cve: "CVE-2023-4966", severity: "Critical", cvss: 9.4,
+      risk_score: 91, exploit_available: "Yes", patch_available: "Yes",
+      days_open: 28, asset_exposure: "Internet", edr_installed: "Yes",
+      environment: "Production", location: "UAE",
+      business_service: "Payment Processing", compliance_scope: "PCI DSS",
+      threat_actor: "IronVeil", campaign_name: "CitrixBleed Exploitation",
+      ransomware_association: "Yes", exploit_maturity: "Weaponized",
+      active_last_seen: "2026-04-20", in_kev: true,
+      nist_control: { control_id: "AC-2", control_name: "Account Management",
+        text: "The organization manages information system accounts including establishing, activating, modifying, reviewing, disabling, and removing accounts; monitors for atypical usage of accounts; and notifies account managers when accounts are no longer required or when users are terminated." },
+      llm_analysis: "CitrixBleed allows session token theft that bypasses MFA entirely — harvested tokens are sold to ransomware affiliates within hours of collection. NIST AC-2 requires active session monitoring and anomalous access detection. Immediate action: force-expire all active NetScaler sessions now, apply the patch, and enable real-time alerts for session token reuse from foreign IP ranges."
+    },
+    {
+      asset_name: "auth-gateway-prod-01", asset_id: "A-1001",
+      vulnerability_name: "OpenSSH Unauthenticated RCE (regreSSHion)",
+      cve: "CVE-2024-6387", severity: "High", cvss: 8.1,
+      risk_score: 78, exploit_available: "Yes", patch_available: "Yes",
+      days_open: 42, asset_exposure: "Internet", edr_installed: "Yes",
+      environment: "Production", location: "UAE",
+      business_service: "Customer Login", compliance_scope: "GDPR",
+      threat_actor: null, campaign_name: null,
+      ransomware_association: "No", exploit_maturity: "Proof-of-Concept",
+      active_last_seen: null, in_kev: true,
+      nist_control: { control_id: "RA-5", control_name: "Vulnerability Monitoring and Scanning",
+        text: "The organization scans for vulnerabilities in the information system and hosted applications periodically and when new vulnerabilities potentially affecting the system are identified; employs vulnerability scanning tools and techniques that promote interoperability." },
+      llm_analysis: "regreSSHion is a race-condition RCE in OpenSSH that has been open for 42 days on an internet-facing authentication gateway processing GDPR-covered customer PII. While no specific threat actor has been matched, the vulnerability is in CISA KEV and public PoC exploits are circulating. NIST RA-5 requires vulnerability scan cycles to catch this. Upgrade OpenSSH to a patched version immediately and restrict SSH access to known management IPs via firewall rule."
+    },
+    {
+      asset_name: "jira-prod-01", asset_id: "A-1022",
+      vulnerability_name: "Confluence OGNL Injection",
+      cve: "CVE-2023-22527", severity: "Critical", cvss: 10.0,
+      risk_score: 72, exploit_available: "Yes", patch_available: "Yes",
+      days_open: 67, asset_exposure: "Internal", edr_installed: "Yes",
+      environment: "Production", location: "India",
+      business_service: "Engineering Platform", compliance_scope: "SOC 2",
+      threat_actor: "RedMantis", campaign_name: "Collaboration Breach",
+      ransomware_association: "Yes", exploit_maturity: "Weaponized",
+      active_last_seen: "2026-04-18", in_kev: false,
+      nist_control: { control_id: "IR-4", control_name: "Incident Handling",
+        text: "The organization implements an incident handling capability for security incidents that includes preparation, detection and analysis, containment, eradication, and recovery; coordinates incident handling activities with contingency planning activities." },
+      llm_analysis: "Despite being internal-only, this CVSS 10 Confluence vulnerability is actively targeted by RedMantis for source code theft and CI/CD credential harvesting. RedMantis plants backdoors in repositories after initial access — the secondary ransomware deployment means the intellectual property theft may already have occurred silently. NIST IR-4 requires a structured incident response process; treat this as a presumed-breach scenario and audit all recent Confluence admin account activity and git clone logs."
+    },
+    {
+      asset_name: "teamcity-prod-01", asset_id: "A-1028",
+      vulnerability_name: "JetBrains TeamCity Auth Bypass",
+      cve: "CVE-2024-27198", severity: "Critical", cvss: 9.8,
+      risk_score: 65, exploit_available: "Yes", patch_available: "Yes",
+      days_open: 31, asset_exposure: "Internal", edr_installed: "No",
+      environment: "Production", location: "India",
+      business_service: "Engineering Platform", compliance_scope: "SOC 2",
+      threat_actor: "SilentForge", campaign_name: "Build Chain Theft",
+      ransomware_association: "No", exploit_maturity: "Weaponized",
+      active_last_seen: "2026-04-15", in_kev: false,
+      nist_control: { control_id: "SA-22", control_name: "Unsupported System Components",
+        text: "The organization replaces information system components when support for the components is no longer available from the developer, vendor, or manufacturer; and provides justification and documents approval for the continued use of unsupported system components required to satisfy mission/business needs." },
+      llm_analysis: "SilentForge specialises in long-term silent access via CI/CD systems — they mimic normal build activity and harvest secrets over weeks without triggering alerts. No EDR is installed on this host, removing the only detection layer. NIST SA-22 applies to unpatched components past their support window. Patch TeamCity immediately, rotate all build secrets and API tokens, and deploy EDR on the CI host as a priority alongside the patch."
+    }
+  ];
+
+  allRisks = mock;
+  renderAll(mock);
+  updateStats(mock);
+  updateStatus("Demo data loaded");
+  document.getElementById("last-run").textContent = new Date().toLocaleTimeString();
+}
+
+// ── Utilities ────────────────────────────────────────────────
+function showLoading(msg) {
+  document.getElementById("loading-text").textContent = msg;
+  document.getElementById("loading").classList.add("active");
+}
+
+function hideLoading() {
+  document.getElementById("loading").classList.remove("active");
+}
+
+function showError(msg) {
+  const el = document.getElementById("error-banner");
+  document.getElementById("error-text").textContent = msg;
+  el.classList.add("active");
+}
+
+function hideError() {
+  document.getElementById("error-banner").classList.remove("active");
+}
+
+function updateStatus(msg) {
+  document.getElementById("status-text").textContent = msg;
+}
+
+function escHtml(str) {
+  return String(str)
+    .replace(/&/g,"&amp;")
+    .replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;");
+}
+
+// ── On load: show demo data immediately ───────────────────────
+window.addEventListener("DOMContentLoaded", () => {
+  renderMockData();
+});
+</script>
+</body>
+</html>
