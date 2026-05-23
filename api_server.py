@@ -58,7 +58,7 @@ def _load_nist_background():
         return
     try:
         _here    = os.path.dirname(os.path.abspath(__file__))
-        nist_csv = os.getenv("NIST_CSV", os.path.join(_here, "data", "nist_controls.csv"))
+        nist_csv = os.getenv("NIST_CSV", os.path.join(_here, "nist_controls.csv"))
         if os.path.exists(CHROMA_DIR):
             _nist_collection = get_nist_collection()
         elif os.path.exists(nist_csv):
@@ -95,10 +95,10 @@ def get_risks():
     # 1. Load and score data (your existing logic)
     _here = os.path.dirname(os.path.abspath(__file__))
     try:
-        assets   = DataLoader.load_csv(os.path.join(_here, "data", "assets.csv"))
-        vulns    = DataLoader.load_csv(os.path.join(_here, "data", "vulnerabilities.csv"))
-        threat   = DataLoader.load_csv(os.path.join(_here, "data", "threat_intelligence.csv"))
-        biz      = DataLoader.load_csv(os.path.join(_here, "data", "business_services.csv"))
+        assets   = DataLoader.load_csv(os.path.join(_here, "assets.csv"))
+        vulns    = DataLoader.load_csv(os.path.join(_here, "vulnerabilities.csv"))
+        threat   = DataLoader.load_csv(os.path.join(_here, "threat_intelligence.csv"))
+        biz      = DataLoader.load_csv(os.path.join(_here, "business_services.csv"))
         kev_cves, kev_ransomware = DataLoader.fetch_cisa_kev()
     except Exception as e:
         return {"risks": [], "error": str(e)}
