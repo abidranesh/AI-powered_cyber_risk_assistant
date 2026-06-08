@@ -1,6 +1,6 @@
 # AI-Powered Cyber Risk Assistant
 
-A risk scoring and analysis tool that reads asset, vulnerability, and threat intelligence data from CSV files, computes a weighted risk score for each vulnerability, cross-references the live CISA KEV catalog, retrieves the most relevant NIST SP 800-53 control via semantic search, then asks an LLM to write a short analyst brief for each of the top 5 risks. There's both a CLI pipeline and a FastAPI backend with a browser dashboard.
+A risk scoring and analysis tool built for TawasolPay. It reads asset, vulnerability, and threat intelligence data from CSV files, computes a weighted risk score for each vulnerability, cross-references the live CISA KEV catalog, retrieves the most relevant NIST SP 800-53 control via semantic search, then asks an LLM to write a short analyst brief for each of the top 5 risks. There's both a CLI pipeline and a FastAPI backend with a browser dashboard.
 
 ---
 
@@ -22,7 +22,7 @@ Create a `.env` file in the project root:
 GROQ_API_KEY=your_key_here
 ```
 
-Get a free key at https://console.groq.com
+Get a free key at https://console.groq.com. The free tier is more than enough for development — Groq's rate limits are generous compared to what you'd hit with Gemini.
 
 **Run the CLI pipeline**
 
@@ -80,7 +80,7 @@ docs/                    Sample generated reports
 
 The first version made direct API calls to Gemini — just the SDK, no abstraction layer. For something small that's fine, but as soon as I had a prompt template, an embedding call, and a vector store retrieval all happening in sequence, the glue code got messy and tightly coupled to a single provider. Pulling in LangChain cleaned that up. PromptTemplate and LCEL chaining handle the prompt construction and model call in a readable pipeline, the Chroma wrapper abstracts the vector store operations, and swapping components is now a one-line change rather than a rewrite.
 
-That swap happened almost immediately after introducing LangChain. I was still using Gemini for both embeddings and LLM calls, and the free-tier rate limits made testing painful. The embedding step alone, indexing ~2,600 NIST controls in batches, kept hitting 429s and forcing long waits. I switched the LLM to Groq (llama-3.1-8b-instant), which has a much higher free quota and faster inference. For embeddings I switched to FastEmbed, which runs the `BAAI/bge-small-en-v1.5` model entirely in-process. No API key, no quota, no per-request cost. The NIST catalog is large enough that removing the rate limit concern from the embedding step made a real difference.
+That swap happened almost immediately after introducing LangChain. I was still using Gemini for both embeddings and LLM calls, and the free-tier rate limits made testing painful — the embedding step alone, indexing ~2,600 NIST controls in batches, kept hitting 429s and forcing long waits. I switched the LLM to Groq (llama-3.1-8b-instant), which has a much higher free quota and faster inference. For embeddings I switched to FastEmbed, which runs the `BAAI/bge-small-en-v1.5` model entirely in-process. No API key, no quota, no per-request cost. The NIST catalog is large enough that removing the rate limit concern from the embedding step made a real difference.
 
 ---
 
@@ -88,9 +88,9 @@ That swap happened almost immediately after introducing LangChain. I was still u
 
 ### What data did I embed, and what did I query as structured records?
 
-What was embedded: Only nist_controls.csv — the NIST SP 800-53 Rev.5 catalog — goes into the vector store. Each row is dense policy prose: control statements, supplemental guidance, discussion text. You can't do an exact-match lookup on that; given a risk context like "unauthenticated RCE on an internet-exposed VPN appliance associated with a ransomware campaign," there's no column to filter on — you need semantic search to find that SI-2 or RA-5 is the right control.
+The only data that goes into the vector store is `nist_controls.csv` — the NIST SP 800-53 rev5 control catalog. Each row is several paragraphs of dense policy prose: the control statement, supplemental guidance, and discussion text. You can't do an exact-match lookup on that. Given a risk context like "unauthenticated RCE on an internet-exposed VPN appliance associated with a ransomware campaign," there's no column to filter on — you need semantic search to find that SI-2 (Flaw Remediation) or RA-5 (Vulnerability Monitoring and Scanning) is the right control. The prose nature of the data, combined with the need to match it against free-form vulnerability descriptions, is exactly what embeddings are designed for.
 
-What was queried as structured records: Everything else — assets, vulnerabilities, threat intel, business services — stays as CSV and gets queried with pandas merges and conditional logic. These are tabular records with well-defined foreign keys and exact-match questions: does this CVE appear in the KEV catalog? Is this asset internet-exposed? A join and a set lookup is the right tool here; embeddings would add noise with no benefit.
+Everything else — assets, vulnerabilities, threat intelligence, business services — stays as CSV and gets queried with pandas merges and conditional logic. These are tabular records with well-defined foreign keys: `asset_id`, `business_service`, `matched_cve_or_control`. The questions you're asking of them are exact: does this CVE appear in the KEV catalog? Is this asset internet-exposed? Does this threat actor's campaign match this CVE? LangChain adds nothing there. A join and a set lookup is the right tool for structured data with known keys.
 
 ### Where does it go wrong?
 

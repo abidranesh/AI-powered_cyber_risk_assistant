@@ -11,6 +11,7 @@ SCORING_CONFIG = {
     "threat_actor_present_score": 15,
     "ransomware_association_score": 10,
     "cisa_kev_ransomware_score":  10,
+    "exploit_maturity_score":      8,  # weaponized/active-exploitation from threat intel
     "compliance_critical_score":   8,
     "criticality_score":           7,
     "patch_unavailable_score":     5,
@@ -23,6 +24,11 @@ class DataLoader:
     def load_csv(path: str) -> pd.DataFrame:
         df = pd.read_csv(path)
         df.columns = df.columns.str.strip().str.lower().str.replace(" ", "_")
+        # Normalize CVE/control identifier values so joins never silently drop rows
+        # due to case or whitespace differences (e.g. "cve-2024-1234" vs "CVE-2024-1234")
+        for col in ("cve", "matched_cve_or_control"):
+            if col in df.columns:
+                df[col] = df[col].str.strip().str.upper()
         return df
 
     @staticmethod
@@ -53,6 +59,22 @@ class ThreatIntelProcessor:
             .groupby("matched_cve_or_control", as_index=False)
             .last()
         )
+
+    @staticmethod
+    def log_unmatched(threat_agg: pd.DataFrame, vuln_cves: set) -> None:
+        """Warn about threat-intel keys that won't join to any vulnerability row."""
+        if threat_agg.empty or "matched_cve_or_control" not in threat_agg.columns:
+            return
+        unmatched = [
+            k for k in threat_agg["matched_cve_or_control"]
+            if pd.notna(k) and k not in vuln_cves
+        ]
+        if unmatched:
+            print(
+                f"WARNING: {len(unmatched)} threat-intel key(s) had no matching vuln CVE "
+                f"and will be ignored in scoring: {unmatched}",
+                flush=True
+            )
 
 
 class RiskScorer:
@@ -85,6 +107,11 @@ class RiskScorer:
         if str(row.get("cve", "")).upper() in self.kev_ransomware:
             score += c["cisa_kev_ransomware_score"]
 
+        # Threat-intel exploit maturity: weaponized or active exploitation in the wild
+        # scores independently of KEV so CVEs that lag behind KEV aren't under-scored
+        if str(row.get("exploit_maturity", "")).strip().lower() in ("weaponized", "active exploitation"):
+            score += c["exploit_maturity_score"]
+
         compliance = str(row.get("compliance_scope", "")).lower()
         if "pci" in compliance or "gdpr" in compliance:
             score += c["compliance_critical_score"]
@@ -108,6 +135,7 @@ if __name__ == "__main__":
     kev_cves, kev_ransomware = DataLoader.fetch_cisa_kev()
 
     threat_agg = ThreatIntelProcessor.aggregate_by_cve(threat)
+    ThreatIntelProcessor.log_unmatched(threat_agg, set(vulns["cve"].dropna()))
 
     merged = vulns.merge(assets, on="asset_id", how="left")
     merged = merged.merge(biz, on="business_service", how="left")
@@ -125,6 +153,14 @@ if __name__ == "__main__":
     merged["risk_score"]        = merged.apply(scorer.score_row, axis=1)
     merged["in_kev"]            = merged["cve"].str.upper().isin(kev_cves)
     merged["in_kev_ransomware"] = merged["cve"].str.upper().isin(kev_ransomware)
+
+    _exploit    = merged.get("exploit_available",    pd.Series("", index=merged.index)).fillna("").str.strip().str.lower() == "yes"
+    _ransomware = merged.get("ransomware_association", pd.Series("", index=merged.index)).fillna("").str.strip().str.lower() == "yes"
+    _maturity   = merged.get("exploit_maturity",     pd.Series("", index=merged.index)).fillna("").str.strip().str.lower().isin(["weaponized", "active exploitation"])
+    merged["kev_gap_flag"] = (_exploit & (_ransomware | _maturity) & (~merged["in_kev"])).astype(bool)
+    gap_cves = merged[merged["kev_gap_flag"]]["cve"].drop_duplicates().tolist()
+    if gap_cves:
+        print(f"INFO: {len(gap_cves)} CVE(s) not in KEV but flagged for manual review: {gap_cves}", flush=True)
 
     top5 = (
         merged.sort_values("risk_score", ascending=False)

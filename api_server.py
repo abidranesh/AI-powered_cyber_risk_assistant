@@ -104,6 +104,7 @@ def get_risks():
         return {"risks": [], "error": str(e)}
 
     threat_agg = ThreatIntelProcessor.aggregate_by_cve(threat)
+    ThreatIntelProcessor.log_unmatched(threat_agg, set(vulns["cve"].dropna()))
 
     merged = vulns.merge(assets, on="asset_id", how="left")
     merged = merged.merge(biz, on="business_service", how="left")
@@ -120,6 +121,17 @@ def get_risks():
     scorer = RiskScorer(SCORING_CONFIG, kev_ransomware)
     merged["risk_score"] = merged.apply(scorer.score_row, axis=1)
     merged["in_kev"]     = merged["cve"].str.upper().isin(kev_cves)
+
+    # Flag CVEs that look KEV-worthy but aren't listed yet — exploit available
+    # AND (ransomware-associated or weaponized/active-exploitation in threat intel).
+    # fillna("") prevents pd.NA propagation from the threat-intel left join.
+    _exploit    = merged.get("exploit_available",    pd.Series("", index=merged.index)).fillna("").str.strip().str.lower() == "yes"
+    _ransomware = merged.get("ransomware_association", pd.Series("", index=merged.index)).fillna("").str.strip().str.lower() == "yes"
+    _maturity   = merged.get("exploit_maturity",     pd.Series("", index=merged.index)).fillna("").str.strip().str.lower().isin(["weaponized", "active exploitation"])
+    merged["kev_gap_flag"] = (_exploit & (_ransomware | _maturity) & (~merged["in_kev"])).astype(bool)
+    gap_cves = merged[merged["kev_gap_flag"]]["cve"].drop_duplicates().tolist()
+    if gap_cves:
+        print(f"INFO: {len(gap_cves)} CVE(s) not in KEV but flagged for manual review: {gap_cves}", flush=True)
 
     top5 = (
         merged.sort_values("risk_score", ascending=False)
@@ -143,6 +155,18 @@ def get_risks():
             elif pd.isna(v) if not isinstance(v, (list, dict)) else False:
                 risk[k] = None
 
+        # Compute kev_gap_flag from the already-serialized values to avoid
+        # numpy bool serialization issues with the generic NaN-check loop
+        risk["kev_gap_flag"] = (
+            str(risk.get("exploit_available") or "").lower() == "yes"
+            and (
+                str(risk.get("ransomware_association") or "").lower() == "yes"
+                or str(risk.get("exploit_maturity") or "").lower()
+                   in ("weaponized", "active exploitation")
+            )
+            and not risk.get("in_kev", False)
+        )
+
         nist_result = None
         llm_text    = None
 
@@ -157,11 +181,13 @@ def get_risks():
             )
             nist_result = retrieve_nist_control(query, collection)
 
-        if gemini_model and nist_result:
+        if gemini_model and nist_result and nist_result.get("confidence") != "none":
             try:
                 llm_text = summarise_risk_with_nist(gemini_model, risk, nist_result)
             except Exception as e:
                 llm_text = f"LLM error: {e}"
+        elif nist_result and nist_result.get("confidence") == "none":
+            llm_text = "No sufficiently confident NIST control match found for this risk — manual review recommended."
 
         risk["nist_control"] = nist_result
         risk["llm_analysis"] = llm_text

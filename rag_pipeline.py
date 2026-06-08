@@ -46,6 +46,8 @@ CHROMA_DIR        = os.path.join(_HERE, "chroma_db")
 COLLECTION_NAME   = "nist_controls_lc"
 CHUNK_SIZE        = 1000   # characters per chunk
 CHUNK_OVERLAP     = 150    # overlap keeps context across boundaries
+TOP_K             = 3     # candidates to retrieve before threshold filtering
+SIMILARITY_THRESHOLD = 1.0  # L2 distance cutoff; above this = no confident match
 
 
 # ── Internal helpers ───────────────────────────────────────────────────────
@@ -195,49 +197,53 @@ def get_nist_collection():
     return vectorstore
 
 
-def retrieve_nist_control(query: str, vectorstore, top_k: int = 1) -> dict:
+def retrieve_nist_control(query: str, vectorstore, top_k: int = TOP_K) -> dict:
     """
     Semantic search: given a plain-English query describing a risk,
-    return the single most relevant NIST SP 800-53 control.
+    return the most relevant NIST SP 800-53 control above a confidence threshold.
 
-    LangChain's similarity_search() handles:
-        - embedding the query with the same model used at index time
-        - cosine similarity search across all stored vectors
-        - returning Document objects with .page_content and .metadata
+    Retrieves top_k candidates with scores, filters by SIMILARITY_THRESHOLD
+    (L2 distance — lower is better), and returns the best confident match.
+    If no match clears the threshold, returns confidence="none" so the caller
+    can skip the LLM rather than hallucinate a recommendation.
 
-    Args:
-        query      : natural-language description of the risk
-                     e.g. "unpatched Fortinet VPN RCE internet-exposed ransomware"
-        vectorstore: object returned by build_nist_vectorstore or get_nist_collection
-        top_k      : number of chunks to retrieve (we use 1 for the final answer)
-
-    Returns:
-        {
-            "control_id"  : "SI-2",
-            "control_name": "Flaw Remediation",
-            "text"        : "SI-2 — Flaw Remediation\n..."  (the full chunk)
-        }
+    Returns dict with keys:
+        control_id, control_name, text, confidence ("high"|"low"|"none"), score
     """
     try:
-        results = vectorstore.similarity_search(query, k=top_k)
+        results = vectorstore.similarity_search_with_score(query, k=top_k)
     except Exception as e:
         log.error(f"Vector search failed: {e}")
-        return {"control_id": "N/A", "control_name": "Search error", "text": str(e)}
+        return {"control_id": "N/A", "control_name": "Search error", "text": str(e),
+                "confidence": "none", "score": None}
 
     if not results:
-        return {"control_id": "N/A", "control_name": "No match", "text": "No matching NIST control found."}
+        return {"control_id": "N/A", "control_name": "No match",
+                "text": "No matching NIST control found.", "confidence": "none", "score": None}
 
-    # results[0] is a LangChain Document
-    doc      = results[0]
-    metadata = doc.metadata
+    # Filter to candidates that clear the confidence threshold
+    confident = [(doc, score) for doc, score in results if score <= SIMILARITY_THRESHOLD]
 
-    # Pull control_id and control_name from metadata (stored by DataFrameLoader)
-    # The column names were prefixed with "_" in _load_nist_documents
+    if not confident:
+        best_score = results[0][1]
+        log.warning(
+            f"No confident NIST match (best L2={best_score:.3f} > threshold={SIMILARITY_THRESHOLD}): "
+            f"{query[:80]}"
+        )
+        return {
+            "control_id": "N/A", "control_name": "No strong match",
+            "text": "No NIST control met the confidence threshold for this risk.",
+            "confidence": "none", "score": round(best_score, 4)
+        }
+
+    doc, score = confident[0]  # lowest distance = best match
+    confidence = "high" if score < 0.5 else "low"
+
+    metadata     = doc.metadata
     control_id   = metadata.get("_control_id",   "")
     control_name = metadata.get("_control_name", "")
 
-    # Fallback: if metadata is missing, try to parse from the text itself
-    # (first line is always "CONTROL_ID — Control Name")
+    # Fallback: parse from text if metadata is missing
     if not control_id and doc.page_content:
         first_line = doc.page_content.split("\n")[0]
         if " — " in first_line:
@@ -245,8 +251,12 @@ def retrieve_nist_control(query: str, vectorstore, top_k: int = 1) -> dict:
             control_id   = parts[0].strip()
             control_name = parts[1].strip() if len(parts) > 1 else ""
 
+    log.info(f"NIST match: {control_id} (L2={score:.3f}, confidence={confidence})")
+
     return {
         "control_id"  : control_id,
         "control_name": control_name,
-        "text"        : doc.page_content
+        "text"        : doc.page_content,
+        "confidence"  : confidence,
+        "score"       : round(score, 4)
     }

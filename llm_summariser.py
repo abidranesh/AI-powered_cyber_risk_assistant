@@ -24,7 +24,7 @@ RISK_SUMMARY_TEMPLATE = PromptTemplate(
         "asset_name", "cve", "cvss", "vulnerability_name",
         "business_service", "threat_actor", "internet_exposed",
         "ransomware_association", "nist_control_id",
-        "nist_control_name", "nist_control_text"
+        "nist_control_name", "nist_control_text", "confidence_note"
     ],
     template="""You are a cybersecurity analyst writing a brief for a CISO.
 
@@ -37,7 +37,7 @@ RISK DETAILS:
 - Internet exposed: {internet_exposed}
 - Ransomware associated: {ransomware_association}
 
-NIST SP 800-53 CONTROL RETRIEVED:
+NIST SP 800-53 CONTROL RETRIEVED:{confidence_note}
 Control: {nist_control_id} — {nist_control_name}
 Full text: {nist_control_text}
 
@@ -83,6 +83,12 @@ def summarise_risk_with_nist(chain, risk: dict, nist_control: dict) -> str:
     Invoke the LCEL chain with risk + NIST data.
     chain.invoke(values) fills the template, calls Groq, returns plain string.
     """
+    confidence = nist_control.get("confidence", "high")
+    confidence_note = (
+        "\n⚠ Low-confidence match — treat this control as approximate guidance only."
+        if confidence == "low" else ""
+    )
+
     values = {
         "asset_name"            : risk.get("asset_name") or risk.get("asset_id") or "Unknown",
         "cve"                   : risk.get("cve") or "N/A",
@@ -95,6 +101,7 @@ def summarise_risk_with_nist(chain, risk: dict, nist_control: dict) -> str:
         "nist_control_id"       : nist_control.get("control_id") or "N/A",
         "nist_control_name"     : nist_control.get("control_name") or "N/A",
         "nist_control_text"     : (nist_control.get("text") or "")[:1500],
+        "confidence_note"       : confidence_note,
     }
 
     try:
